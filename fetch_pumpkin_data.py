@@ -318,6 +318,31 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
         <div class="container">
             <h1>🎃 New Pumpkins Found This Hour</h1>
             
+            <div class="progress-section" style="background-color: #e8f5e8; border: 2px solid #28a745; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <div style="font-weight: bold; font-size: 1.2em; color: #155724; margin-bottom: 15px;">📊 Pumpkin Progress</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="background: white; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #28a745;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: #ff6b35;" id="totalPumpkins">{{ total_pumpkins }}</div>
+                        <div style="color: #666; font-size: 0.9em;">Total Available</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #28a745;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: #28a745;" id="claimedPumpkins">{{ claimed_pumpkins }}</div>
+                        <div style="color: #666; font-size: 0.9em;">Already Claimed</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #28a745;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: #dc3545;" id="pumpkinsLeft">{{ pumpkins_left }}</div>
+                        <div style="color: #666; font-size: 0.9em;">Pumpkins Left</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #28a745;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: #17a2b8;" id="newThisHour">{{ new_this_hour }}</div>
+                        <div style="color: #666; font-size: 0.9em;">New This Hour</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; text-align: center; color: #666;">
+                    Progress: {{ claimed_pumpkins }}/{{ total_pumpkins }} ({{ progress_percent }}% complete)
+                </div>
+            </div>
+            
             <div class="input-section">
                 <div class="input-label">📋 Update Claimed Pumpkins (Paste data.json content):</div>
                 <textarea id="dataInput" class="data-input" placeholder='Paste your data.json content here, e.g.:
@@ -399,6 +424,13 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                         document.getElementById('pumpkinResults').innerHTML = result.html;
                         document.getElementById('lastUpdate').textContent = result.timestamp;
                         document.getElementById('pumpkinCount').textContent = result.count;
+                        
+                        // Update progress statistics
+                        document.getElementById('totalPumpkins').textContent = result.totalPumpkins;
+                        document.getElementById('claimedPumpkins').textContent = result.claimedPumpkins;
+                        document.getElementById('pumpkinsLeft').textContent = result.pumpkinsLeft;
+                        document.getElementById('newThisHour').textContent = result.count;
+                        
                         showStatus(`Updated successfully! Found ${result.count} new pumpkins.`, 'success');
                     } else {
                         showStatus('Error: ' + result.error, 'error');
@@ -438,13 +470,25 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
             recent_pumpkins = filter_recent_pumpkins(new_pumpkins)
         except:
             recent_pumpkins = {}
+            existing_ids = set()
+            
+        # Calculate progress statistics
+        total_pumpkins = len(app.pumpkin_data)
+        claimed_pumpkins = len(existing_ids)
+        pumpkins_left = total_pumpkins - claimed_pumpkins
+        progress_percent = round((claimed_pumpkins / total_pumpkins * 100), 1) if total_pumpkins > 0 else 0
             
         return render_template_string(
             html_template,
             pumpkins=recent_pumpkins,
             generate_link=generate_pumpkin_link,
             current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            pumpkin_count=len(recent_pumpkins)
+            pumpkin_count=len(recent_pumpkins),
+            total_pumpkins=total_pumpkins,
+            claimed_pumpkins=claimed_pumpkins,
+            pumpkins_left=pumpkins_left,
+            new_this_hour=len(recent_pumpkins),
+            progress_percent=progress_percent
         )
     
     @app.route('/get_initial_data')
@@ -512,11 +556,19 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                 </div>
                 ''')
             
+            # Calculate progress statistics
+            total_pumpkins = len(app.pumpkin_data)
+            claimed_pumpkins = len(existing_ids)
+            pumpkins_left = total_pumpkins - claimed_pumpkins
+            
             return jsonify({
                 "success": True,
                 "html": ''.join(html_parts),
                 "count": len(recent_pumpkins),
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "totalPumpkins": total_pumpkins,
+                "claimedPumpkins": claimed_pumpkins,
+                "pumpkinsLeft": pumpkins_left
             })
             
         except Exception as e:
@@ -568,12 +620,23 @@ def main():
         print("\nStep 4: Filtering to recent pumpkins...")
         recent_pumpkins = filter_recent_pumpkins(new_pumpkins)
         
+        # Step 5: Calculate and display pumpkins left to get
+        total_pumpkins = len(pumpkin_data)
+        claimed_pumpkins = len(existing_ids)
+        pumpkins_left = total_pumpkins - claimed_pumpkins
+        
+        print(f"\n📊 Pumpkin Progress:")
+        print(f"   Total pumpkins available: {total_pumpkins}")
+        print(f"   Pumpkins already claimed: {claimed_pumpkins}")
+        print(f"   Pumpkins left to get: {pumpkins_left}")
+        print(f"   New pumpkins found this hour: {len(recent_pumpkins)}")
+        
         # Save all fetched data for reference
         save_data_to_file(pumpkin_data, "all_pumpkins.json")
         save_data_to_file(recent_pumpkins, "recent_new_pumpkins.json")
         
-        # Step 5: Serve website
-        print(f"\nStep 5: Starting web server...")
+        # Step 6: Serve website
+        print(f"\nStep 6: Starting web server...")
         app = create_web_app(pumpkin_data)
         
         print("\n🎃 Pumpkin Tracker is running!")
