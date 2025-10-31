@@ -320,10 +320,14 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
             
             <div class="progress-section" style="background-color: #e8f5e8; border: 2px solid #28a745; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                 <div style="font-weight: bold; font-size: 1.2em; color: #155724; margin-bottom: 15px;">📊 Pumpkin Progress</div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
                     <div style="background: white; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #28a745;">
                         <div style="font-size: 1.5em; font-weight: bold; color: #ff6b35;" id="totalPumpkins">{{ total_pumpkins }}</div>
-                        <div style="color: #666; font-size: 0.9em;">Total Available</div>
+                        <div style="color: #666; font-size: 0.9em;">Total in Game</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #28a745;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: #6f42c1;" id="apiPumpkins">{{ api_pumpkins }}</div>
+                        <div style="color: #666; font-size: 0.9em;">Discovered</div>
                     </div>
                     <div style="background: white; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #28a745;">
                         <div style="font-size: 1.5em; font-weight: bold; color: #28a745;" id="claimedPumpkins">{{ claimed_pumpkins }}</div>
@@ -339,7 +343,8 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                     </div>
                 </div>
                 <div style="margin-top: 15px; text-align: center; color: #666;">
-                    Progress: {{ claimed_pumpkins }}/{{ total_pumpkins }} ({{ progress_percent }}% complete)
+                    <div id="progressText">Real Progress: {{ claimed_pumpkins }}/{{ total_pumpkins }} ({{ real_progress_percent }}% complete)</div>
+                    <div style="font-size: 0.85em; color: #888; margin-top: 5px;" id="apiProgressText">API Progress: {{ claimed_pumpkins }}/{{ api_pumpkins }} ({{ api_progress_percent }}% of discovered)</div>
                 </div>
             </div>
             
@@ -427,9 +432,16 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                         
                         // Update progress statistics
                         document.getElementById('totalPumpkins').textContent = result.totalPumpkins;
+                        document.getElementById('apiPumpkins').textContent = result.apiPumpkins;
                         document.getElementById('claimedPumpkins').textContent = result.claimedPumpkins;
                         document.getElementById('pumpkinsLeft').textContent = result.pumpkinsLeft;
                         document.getElementById('newThisHour').textContent = result.count;
+                        
+                        // Update progress text
+                        const realProgressPercent = result.totalPumpkins > 0 ? ((result.claimedPumpkins / result.totalPumpkins) * 100).toFixed(1) : 0;
+                        const apiProgressPercent = result.apiPumpkins > 0 ? ((result.claimedPumpkins / result.apiPumpkins) * 100).toFixed(1) : 0;
+                        document.getElementById('progressText').textContent = `Real Progress: ${result.claimedPumpkins}/${result.totalPumpkins} (${realProgressPercent}% complete)`;
+                        document.getElementById('apiProgressText').textContent = `API Progress: ${result.claimedPumpkins}/${result.apiPumpkins} (${apiProgressPercent}% of discovered)`;
                         
                         showStatus(`Updated successfully! Found ${result.count} new pumpkins.`, 'success');
                     } else {
@@ -473,10 +485,12 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
             existing_ids = set()
             
         # Calculate progress statistics
-        total_pumpkins = len(app.pumpkin_data)
+        api_pumpkins = len(app.pumpkin_data)  # Pumpkins currently discovered/available in API
+        total_pumpkins = 100  # Total pumpkins that exist in the game
         claimed_pumpkins = len(existing_ids)
         pumpkins_left = total_pumpkins - claimed_pumpkins
-        progress_percent = round((claimed_pumpkins / total_pumpkins * 100), 1) if total_pumpkins > 0 else 0
+        api_progress_percent = round((claimed_pumpkins / api_pumpkins * 100), 1) if api_pumpkins > 0 else 0
+        real_progress_percent = round((claimed_pumpkins / total_pumpkins * 100), 1)
             
         return render_template_string(
             html_template,
@@ -485,10 +499,12 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
             current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             pumpkin_count=len(recent_pumpkins),
             total_pumpkins=total_pumpkins,
+            api_pumpkins=api_pumpkins,
             claimed_pumpkins=claimed_pumpkins,
             pumpkins_left=pumpkins_left,
             new_this_hour=len(recent_pumpkins),
-            progress_percent=progress_percent
+            api_progress_percent=api_progress_percent,
+            real_progress_percent=real_progress_percent
         )
     
     @app.route('/get_initial_data')
@@ -557,7 +573,8 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                 ''')
             
             # Calculate progress statistics
-            total_pumpkins = len(app.pumpkin_data)
+            api_pumpkins = len(app.pumpkin_data)  # Pumpkins currently discovered/available in API
+            total_pumpkins = 100  # Total pumpkins that exist in the game
             claimed_pumpkins = len(existing_ids)
             pumpkins_left = total_pumpkins - claimed_pumpkins
             
@@ -567,6 +584,7 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                 "count": len(recent_pumpkins),
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "totalPumpkins": total_pumpkins,
+                "apiPumpkins": api_pumpkins,
                 "claimedPumpkins": claimed_pumpkins,
                 "pumpkinsLeft": pumpkins_left
             })
@@ -621,14 +639,20 @@ def main():
         recent_pumpkins = filter_recent_pumpkins(new_pumpkins)
         
         # Step 5: Calculate and display pumpkins left to get
-        total_pumpkins = len(pumpkin_data)
+        api_pumpkins = len(pumpkin_data)  # Pumpkins currently discovered/available in API
+        total_pumpkins = 100  # Total pumpkins that exist in the game
         claimed_pumpkins = len(existing_ids)
         pumpkins_left = total_pumpkins - claimed_pumpkins
+        undiscovered_pumpkins = total_pumpkins - api_pumpkins
         
         print(f"\n📊 Pumpkin Progress:")
-        print(f"   Total pumpkins available: {total_pumpkins}")
+        print(f"   Total pumpkins in game: {total_pumpkins}")
+        print(f"   Pumpkins discovered (API): {api_pumpkins}")
+        print(f"   Pumpkins not yet discovered: {undiscovered_pumpkins}")
         print(f"   Pumpkins already claimed: {claimed_pumpkins}")
         print(f"   Pumpkins left to get: {pumpkins_left}")
+        print(f"   Real progress: {claimed_pumpkins}/{total_pumpkins} ({round((claimed_pumpkins/total_pumpkins*100), 1)}%)")
+        print(f"   API progress: {claimed_pumpkins}/{api_pumpkins} ({round((claimed_pumpkins/api_pumpkins*100), 1) if api_pumpkins > 0 else 0}%)")
         print(f"   New pumpkins found this hour: {len(recent_pumpkins)}")
         
         # Save all fetched data for reference
