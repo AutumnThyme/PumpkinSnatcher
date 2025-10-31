@@ -193,25 +193,49 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                 background-color: #f5f5f5;
             }
             .container {
-                max-width: 1000px;
+                max-width: 1200px;
                 margin: 0 auto;
                 background-color: white;
                 padding: 20px;
                 border-radius: 8px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
+            .input-section-wrapper {
+                display: flex;
+                gap: 15px;
+                margin-bottom: 30px;
+            }
+            .input-section {
+                flex: 2;
+                background-color: #f9f9f9;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                padding: 20px;
+            }
+            .sidebar {
+                flex: 1;
+                background-color: #f8f9fa;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                padding: 20px;
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .links-panel {
+                flex: 1;
+                background-color: #fff3cd;
+                border: 2px solid #ffc107;
+                border-radius: 8px;
+                padding: 20px;
+                max-height: 400px;
+                overflow-y: auto;
+            }
             h1 { 
                 color: #ff6b35; 
                 text-align: center;
                 margin-bottom: 30px;
             }
-            .input-section {
-                background-color: #f9f9f9;
-                border: 2px solid #ddd;
-                border-radius: 8px;
-                padding: 20px;
-                margin-bottom: 30px;
-            }
+
             .input-label {
                 font-weight: bold;
                 margin-bottom: 10px;
@@ -312,6 +336,89 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                 margin-top: 20px;
                 font-size: 0.9em;
             }
+            .sidebar-title {
+                font-weight: bold;
+                font-size: 1.1em;
+                color: #495057;
+                margin-bottom: 15px;
+                text-align: center;
+            }
+            .missing-list {
+                background: white;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                padding: 15px;
+                font-family: monospace;
+                font-size: 12px;
+                white-space: pre-wrap;
+                max-height: 300px;
+                overflow-y: auto;
+                margin-bottom: 15px;
+            }
+            .copy-button {
+                width: 100%;
+                background-color: #007bff;
+                color: white;
+                padding: 8px 12px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+                transition: background-color 0.3s;
+            }
+            .copy-button:hover {
+                background-color: #0056b3;
+            }
+            .copy-success {
+                background-color: #28a745 !important;
+            }
+            .links-title {
+                font-weight: bold;
+                font-size: 1.1em;
+                color: #856404;
+                margin-bottom: 15px;
+                text-align: center;
+            }
+            .links-list {
+                background: white;
+                border: 1px solid #ffc107;
+                border-radius: 4px;
+                padding: 15px;
+                max-height: 300px;
+                overflow-y: auto;
+                margin-bottom: 15px;
+            }
+            .pumpkin-link-item {
+                margin-bottom: 8px;
+                padding: 8px;
+                background-color: #fff8e1;
+                border-radius: 4px;
+                border-left: 3px solid #ffc107;
+            }
+            .pumpkin-link-item a {
+                text-decoration: none;
+                color: #856404;
+                font-weight: bold;
+                font-size: 0.9em;
+            }
+            .pumpkin-link-item a:hover {
+                color: #533f03;
+                text-decoration: underline;
+            }
+            .copy-links-button {
+                width: 100%;
+                background-color: #ffc107;
+                color: #212529;
+                padding: 8px 12px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+                transition: background-color 0.3s;
+            }
+            .copy-links-button:hover {
+                background-color: #e0a800;
+            }
         </style>
     </head>
     <body>
@@ -348,7 +455,8 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                 </div>
             </div>
             
-            <div class="input-section">
+            <div class="input-section-wrapper">
+                <div class="input-section">
                 <div class="input-label">📋 Update Claimed Pumpkins (Paste data.json content):</div>
                 <textarea id="dataInput" class="data-input" placeholder='Paste your data.json content here, e.g.:
 {
@@ -356,6 +464,26 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
 }'></textarea>
                 <button id="updateButton" class="update-button" onclick="updatePumpkins()">Update Results</button>
                 <div id="statusMessage" class="status-message" style="display: none;"></div>
+                </div>
+                
+                <div class="sidebar">
+                    <div class="sidebar-title">📋 Missing Pumpkins</div>
+                    <div class="missing-list" id="missingList">{{ missing_pumpkins_text }}</div>
+                    <button class="copy-button" id="copyButton" onclick="copyMissingList()">Copy Missing List</button>
+                    <div style="margin-top: 15px; font-size: 0.85em; color: #666; text-align: center;">
+                        <div>Missing from API: <span id="missingFromApi">{{ missing_from_api_count }}</span></div>
+                        <div>Available but unclaimed: <span id="availableUnclaimed">{{ available_unclaimed_count }}</span></div>
+                    </div>
+                </div>
+                
+                <div class="links-panel">
+                    <div class="links-title">🔗 Recent Unclaimed Links</div>
+                    <div class="missing-list" id="linksList">{{ unclaimed_links_text }}</div>
+                    <button class="copy-links-button" id="copyLinksButton" onclick="copyUnclaimedLinks()">Copy Recent Links</button>
+                    <div style="margin-top: 15px; font-size: 0.85em; color: #856404; text-align: center;">
+                        <div>Recent links (this hour): <span id="availableLinksCount">{{ recent_unclaimed_count }}</span></div>
+                    </div>
+                </div>
             </div>
             
             <div class="pumpkin-results">
@@ -443,6 +571,15 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                         document.getElementById('progressText').textContent = `Real Progress: ${result.claimedPumpkins}/${result.totalPumpkins} (${realProgressPercent}% complete)`;
                         document.getElementById('apiProgressText').textContent = `API Progress: ${result.claimedPumpkins}/${result.apiPumpkins} (${apiProgressPercent}% of discovered)`;
                         
+                        // Update sidebar
+                        document.getElementById('missingList').textContent = result.missingPumpkinsText;
+                        document.getElementById('missingFromApi').textContent = result.missingFromApiCount;
+                        document.getElementById('availableUnclaimed').textContent = result.availableUnclaimedCount;
+                        
+                        // Update links panel
+                        document.getElementById('linksList').textContent = result.unclaimedLinksText;
+                        document.getElementById('availableLinksCount').textContent = result.recentUnclaimedCount;
+                        
                         showStatus(`Updated successfully! Found ${result.count} new pumpkins.`, 'success');
                     } else {
                         showStatus('Error: ' + result.error, 'error');
@@ -468,6 +605,73 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                     statusEl.style.display = 'none';
                 }, 5000);
             }
+            
+            function copyMissingList() {
+                const missingList = document.getElementById('missingList');
+                const button = document.getElementById('copyButton');
+                
+                // Select and copy the text
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(missingList.textContent).then(() => {
+                        button.textContent = 'Copied!';
+                        button.classList.add('copy-success');
+                        setTimeout(() => {
+                            button.textContent = 'Copy Missing List';
+                            button.classList.remove('copy-success');
+                        }, 2000);
+                    });
+                } else {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = missingList.textContent;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    button.textContent = 'Copied!';
+                    button.classList.add('copy-success');
+                    setTimeout(() => {
+                        button.textContent = 'Copy Missing List';
+                        button.classList.remove('copy-success');
+                    }, 2000);
+                }
+            }
+            
+            function copyUnclaimedLinks() {
+                const linksList = document.getElementById('linksList');
+                const button = document.getElementById('copyLinksButton');
+                
+                // Get the plain text content
+                const linksText = linksList.textContent;
+                
+                // Copy the text
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(linksText).then(() => {
+                        button.textContent = 'Copied!';
+                        button.style.backgroundColor = '#28a745';
+                        setTimeout(() => {
+                            button.textContent = 'Copy All Links';
+                            button.style.backgroundColor = '#ffc107';
+                        }, 2000);
+                    });
+                } else {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = linksText;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    button.textContent = 'Copied!';
+                    button.style.backgroundColor = '#28a745';
+                    setTimeout(() => {
+                        button.textContent = 'Copy All Links';
+                        button.style.backgroundColor = '#ffc107';
+                    }, 2000);
+                }
+            }
         </script>
     </body>
     </html>
@@ -491,6 +695,37 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
         pumpkins_left = total_pumpkins - claimed_pumpkins
         api_progress_percent = round((claimed_pumpkins / api_pumpkins * 100), 1) if api_pumpkins > 0 else 0
         real_progress_percent = round((claimed_pumpkins / total_pumpkins * 100), 1)
+        
+        # Generate missing pumpkins list
+        all_possible_ids = set(range(1, total_pumpkins + 1))
+        api_pumpkin_ids = set(int(pid) for pid in app.pumpkin_data.keys())
+        missing_from_api = sorted(all_possible_ids - api_pumpkin_ids)
+        available_unclaimed = sorted(api_pumpkin_ids - existing_ids)
+        
+        missing_pumpkins_text = "Missing from API:\n" + ", ".join(map(str, missing_from_api))
+        missing_pumpkins_text += "\n\nAvailable but unclaimed:\n" + ", ".join(map(str, available_unclaimed))
+        
+        missing_from_api_count = len(missing_from_api)
+        available_unclaimed_count = len(available_unclaimed)
+        
+        # Generate unclaimed links text (filtered for current hour)
+        unclaimed_links_text = ""
+        recent_unclaimed_count = 0
+        for pumpkin_id in available_unclaimed:
+            pumpkin_info = app.pumpkin_data.get(str(pumpkin_id))
+            if pumpkin_info:
+                # Check if this pumpkin was found within the current hour
+                try:
+                    found_at = datetime.fromisoformat(pumpkin_info['foundAt'].replace('Z', '+00:00'))
+                    now = datetime.now(timezone.utc)
+                    current_hour_start = now.replace(minute=0, second=0, microsecond=0)
+                    
+                    if found_at >= current_hour_start:
+                        link = generate_pumpkin_link(pumpkin_info['lat'], pumpkin_info['lng'])
+                        unclaimed_links_text += f"{pumpkin_id}: {link}\n"
+                        recent_unclaimed_count += 1
+                except (KeyError, ValueError):
+                    continue
             
         return render_template_string(
             html_template,
@@ -504,7 +739,12 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
             pumpkins_left=pumpkins_left,
             new_this_hour=len(recent_pumpkins),
             api_progress_percent=api_progress_percent,
-            real_progress_percent=real_progress_percent
+            real_progress_percent=real_progress_percent,
+            missing_pumpkins_text=missing_pumpkins_text,
+            missing_from_api_count=missing_from_api_count,
+            available_unclaimed_count=available_unclaimed_count,
+            unclaimed_links_text=unclaimed_links_text,
+            recent_unclaimed_count=recent_unclaimed_count
         )
     
     @app.route('/get_initial_data')
@@ -578,6 +818,34 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
             claimed_pumpkins = len(existing_ids)
             pumpkins_left = total_pumpkins - claimed_pumpkins
             
+            # Generate missing pumpkins list
+            all_possible_ids = set(range(1, total_pumpkins + 1))
+            api_pumpkin_ids = set(int(pid) for pid in app.pumpkin_data.keys())
+            missing_from_api = sorted(all_possible_ids - api_pumpkin_ids)
+            available_unclaimed = sorted(api_pumpkin_ids - existing_ids)
+            
+            missing_pumpkins_text = "Missing from API:\n" + ", ".join(map(str, missing_from_api))
+            missing_pumpkins_text += "\n\nAvailable but unclaimed:\n" + ", ".join(map(str, available_unclaimed))
+            
+            # Generate unclaimed links text (filtered for current hour)
+            unclaimed_links_text = ""
+            recent_unclaimed_count = 0
+            for pumpkin_id in available_unclaimed:
+                pumpkin_info = app.pumpkin_data.get(str(pumpkin_id))
+                if pumpkin_info:
+                    # Check if this pumpkin was found within the current hour
+                    try:
+                        found_at = datetime.fromisoformat(pumpkin_info['foundAt'].replace('Z', '+00:00'))
+                        now = datetime.now(timezone.utc)
+                        current_hour_start = now.replace(minute=0, second=0, microsecond=0)
+                        
+                        if found_at >= current_hour_start:
+                            link = generate_pumpkin_link(pumpkin_info['lat'], pumpkin_info['lng'])
+                            unclaimed_links_text += f"{pumpkin_id}: {link}\n"
+                            recent_unclaimed_count += 1
+                    except (KeyError, ValueError):
+                        continue
+            
             return jsonify({
                 "success": True,
                 "html": ''.join(html_parts),
@@ -586,7 +854,12 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                 "totalPumpkins": total_pumpkins,
                 "apiPumpkins": api_pumpkins,
                 "claimedPumpkins": claimed_pumpkins,
-                "pumpkinsLeft": pumpkins_left
+                "pumpkinsLeft": pumpkins_left,
+                "missingPumpkinsText": missing_pumpkins_text,
+                "missingFromApiCount": len(missing_from_api),
+                "availableUnclaimedCount": len(available_unclaimed),
+                "unclaimedLinksText": unclaimed_links_text,
+                "recentUnclaimedCount": recent_unclaimed_count
             })
             
         except Exception as e:
