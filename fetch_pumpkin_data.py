@@ -542,7 +542,7 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                 }
                 
                 updateButton.disabled = true;
-                updateButton.textContent = 'Updating...';
+                updateButton.textContent = 'Fetching fresh data...';
                 
                 fetch('/update_pumpkins', {
                     method: 'POST',
@@ -580,7 +580,9 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                         document.getElementById('linksList').textContent = result.unclaimedLinksText;
                         document.getElementById('availableLinksCount').textContent = result.recentUnclaimedCount;
                         
-                        showStatus(`Updated successfully! Found ${result.count} new pumpkins.`, 'success');
+                        // Show appropriate success message
+                        const dataSource = result.freshDataFetched ? "fresh API data" : "cached data (API unavailable)";
+                        showStatus(`Updated with ${dataSource}! Found ${result.count} new pumpkins this hour.`, 'success');
                     } else {
                         showStatus('Error: ' + result.error, 'error');
                     }
@@ -767,6 +769,18 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
             request_data = request.get_json()
             input_data = request_data.get('data', '')
             
+            # Fetch fresh API data
+            fresh_data_success = True
+            try:
+                print("Fetching fresh pumpkin data from API...")
+                fresh_pumpkin_data = fetch_pumpkin_data()
+                app.pumpkin_data = fresh_pumpkin_data  # Update the cached data
+                print(f"Updated with {len(fresh_pumpkin_data)} pumpkins from API")
+            except Exception as e:
+                print(f"Warning: Could not fetch fresh data, using cached data. Error: {e}")
+                fresh_data_success = False
+                # Continue with cached data if API fetch fails
+            
             # Parse the input JSON
             try:
                 claimed_data = json.loads(input_data)
@@ -859,7 +873,8 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
                 "missingFromApiCount": len(missing_from_api),
                 "availableUnclaimedCount": len(available_unclaimed),
                 "unclaimedLinksText": unclaimed_links_text,
-                "recentUnclaimedCount": recent_unclaimed_count
+                "recentUnclaimedCount": recent_unclaimed_count,
+                "freshDataFetched": fresh_data_success
             })
             
         except Exception as e:
