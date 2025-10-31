@@ -12,7 +12,7 @@ A tool to track and find new pumpkins from the wplace pumpkin event, showing rea
 
 ## Usage Screenshot
 
-![PumpkinSnatcher Interface](https://github.com/AutumnThyme/PumpkinSnatcher/raw/main/usage_screenshot.png)
+![PumpkinSnatcher Interface](./Usage.png)
 
 *The web interface showing progress tracking with 90/100 pumpkins claimed and real-time updates*
 
