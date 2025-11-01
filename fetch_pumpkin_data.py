@@ -700,12 +700,22 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
         
         # Generate missing pumpkins list
         all_possible_ids = set(range(1, total_pumpkins + 1))
-        api_pumpkin_ids = set(int(pid) for pid in app.pumpkin_data.keys())
-        missing_from_api = sorted(all_possible_ids - api_pumpkin_ids)
-        available_unclaimed = sorted(api_pumpkin_ids - existing_ids)
         
-        missing_pumpkins_text = "Missing from API:\n" + ", ".join(map(str, missing_from_api))
-        missing_pumpkins_text += "\n\nAvailable but unclaimed:\n" + ", ".join(map(str, available_unclaimed))
+        # Handle case where API data is empty or unavailable
+        if app.pumpkin_data:
+            api_pumpkin_ids = set(int(pid) for pid in app.pumpkin_data.keys())
+            missing_from_api = sorted(all_possible_ids - api_pumpkin_ids)
+            available_unclaimed = sorted(api_pumpkin_ids - existing_ids)
+            
+            missing_pumpkins_text = "Missing from API:\n" + ", ".join(map(str, missing_from_api))
+            missing_pumpkins_text += "\n\nAvailable but unclaimed:\n" + ", ".join(map(str, available_unclaimed))
+        else:
+            # API failed or returned no data - show all unclaimed pumpkins
+            all_unclaimed = sorted(all_possible_ids - existing_ids)
+            missing_from_api = []
+            available_unclaimed = []
+            
+            missing_pumpkins_text = "API unavailable - showing all unclaimed pumpkins:\n" + ", ".join(map(str, all_unclaimed))
         
         missing_from_api_count = len(missing_from_api)
         available_unclaimed_count = len(available_unclaimed)
@@ -713,21 +723,28 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
         # Generate unclaimed links text (filtered for current hour)
         unclaimed_links_text = ""
         recent_unclaimed_count = 0
-        for pumpkin_id in available_unclaimed:
-            pumpkin_info = app.pumpkin_data.get(str(pumpkin_id))
-            if pumpkin_info:
-                # Check if this pumpkin was found within the current hour
-                try:
-                    found_at = datetime.fromisoformat(pumpkin_info['foundAt'].replace('Z', '+00:00'))
-                    now = datetime.now(timezone.utc)
-                    current_hour_start = now.replace(minute=0, second=0, microsecond=0)
-                    
-                    if found_at >= current_hour_start:
-                        link = generate_pumpkin_link(pumpkin_info['lat'], pumpkin_info['lng'])
-                        unclaimed_links_text += f"{pumpkin_id}: {link}\n"
-                        recent_unclaimed_count += 1
-                except (KeyError, ValueError):
-                    continue
+        
+        if app.pumpkin_data:
+            # API data available - show recent unclaimed with links
+            for pumpkin_id in available_unclaimed:
+                pumpkin_info = app.pumpkin_data.get(str(pumpkin_id))
+                if pumpkin_info:
+                    # Check if this pumpkin was found within the current hour
+                    try:
+                        found_at = datetime.fromisoformat(pumpkin_info['foundAt'].replace('Z', '+00:00'))
+                        now = datetime.now(timezone.utc)
+                        current_hour_start = now.replace(minute=0, second=0, microsecond=0)
+                        
+                        if found_at >= current_hour_start:
+                            link = generate_pumpkin_link(pumpkin_info['lat'], pumpkin_info['lng'])
+                            unclaimed_links_text += f"{pumpkin_id}: {link}\n"
+                            recent_unclaimed_count += 1
+                    except (KeyError, ValueError):
+                        continue
+        else:
+            # API unavailable - show message about no recent links
+            unclaimed_links_text = "API unavailable - cannot show recent links.\nRestart application when API is available."
+            recent_unclaimed_count = 0
             
         return render_template_string(
             html_template,
@@ -834,31 +851,48 @@ def create_web_app(initial_pumpkin_data: Dict[str, Any]) -> Flask:
             
             # Generate missing pumpkins list
             all_possible_ids = set(range(1, total_pumpkins + 1))
-            api_pumpkin_ids = set(int(pid) for pid in app.pumpkin_data.keys())
-            missing_from_api = sorted(all_possible_ids - api_pumpkin_ids)
-            available_unclaimed = sorted(api_pumpkin_ids - existing_ids)
             
-            missing_pumpkins_text = "Missing from API:\n" + ", ".join(map(str, missing_from_api))
-            missing_pumpkins_text += "\n\nAvailable but unclaimed:\n" + ", ".join(map(str, available_unclaimed))
+            # Handle case where API data is empty or unavailable
+            if app.pumpkin_data:
+                api_pumpkin_ids = set(int(pid) for pid in app.pumpkin_data.keys())
+                missing_from_api = sorted(all_possible_ids - api_pumpkin_ids)
+                available_unclaimed = sorted(api_pumpkin_ids - existing_ids)
+                
+                missing_pumpkins_text = "Missing from API:\n" + ", ".join(map(str, missing_from_api))
+                missing_pumpkins_text += "\n\nAvailable but unclaimed:\n" + ", ".join(map(str, available_unclaimed))
+            else:
+                # API failed or returned no data - show all unclaimed pumpkins
+                all_unclaimed = sorted(all_possible_ids - existing_ids)
+                missing_from_api = []
+                available_unclaimed = []
+                
+                missing_pumpkins_text = "API unavailable - showing all unclaimed pumpkins:\n" + ", ".join(map(str, all_unclaimed))
             
             # Generate unclaimed links text (filtered for current hour)
             unclaimed_links_text = ""
             recent_unclaimed_count = 0
-            for pumpkin_id in available_unclaimed:
-                pumpkin_info = app.pumpkin_data.get(str(pumpkin_id))
-                if pumpkin_info:
-                    # Check if this pumpkin was found within the current hour
-                    try:
-                        found_at = datetime.fromisoformat(pumpkin_info['foundAt'].replace('Z', '+00:00'))
-                        now = datetime.now(timezone.utc)
-                        current_hour_start = now.replace(minute=0, second=0, microsecond=0)
-                        
-                        if found_at >= current_hour_start:
-                            link = generate_pumpkin_link(pumpkin_info['lat'], pumpkin_info['lng'])
-                            unclaimed_links_text += f"{pumpkin_id}: {link}\n"
-                            recent_unclaimed_count += 1
-                    except (KeyError, ValueError):
-                        continue
+            
+            if app.pumpkin_data:
+                # API data available - show recent unclaimed with links
+                for pumpkin_id in available_unclaimed:
+                    pumpkin_info = app.pumpkin_data.get(str(pumpkin_id))
+                    if pumpkin_info:
+                        # Check if this pumpkin was found within the current hour
+                        try:
+                            found_at = datetime.fromisoformat(pumpkin_info['foundAt'].replace('Z', '+00:00'))
+                            now = datetime.now(timezone.utc)
+                            current_hour_start = now.replace(minute=0, second=0, microsecond=0)
+                            
+                            if found_at >= current_hour_start:
+                                link = generate_pumpkin_link(pumpkin_info['lat'], pumpkin_info['lng'])
+                                unclaimed_links_text += f"{pumpkin_id}: {link}\n"
+                                recent_unclaimed_count += 1
+                        except (KeyError, ValueError):
+                            continue
+            else:
+                # API unavailable - show message about no recent links
+                unclaimed_links_text = "API unavailable - cannot show recent links.\nRestart application when API is available."
+                recent_unclaimed_count = 0
             
             return jsonify({
                 "success": True,
@@ -912,7 +946,12 @@ def main():
         
         # Step 1: Get the list of pumpkins
         print("Step 1: Fetching pumpkin data...")
-        pumpkin_data = fetch_pumpkin_data()
+        try:
+            pumpkin_data = fetch_pumpkin_data()
+        except Exception as e:
+            print(f"Warning: Failed to fetch initial pumpkin data from API: {e}")
+            print("Starting with empty pumpkin data - you can still track missing pumpkins 1-100")
+            pumpkin_data = {}
         
         # Step 2: Read existing IDs from data.json
         print("\nStep 2: Reading existing pumpkin IDs...")
@@ -935,13 +974,16 @@ def main():
         
         print(f"\n📊 Pumpkin Progress:")
         print(f"   Total pumpkins in game: {total_pumpkins}")
-        print(f"   Pumpkins discovered (API): {api_pumpkins}")
-        print(f"   Pumpkins not yet discovered: {undiscovered_pumpkins}")
+        if api_pumpkins > 0:
+            print(f"   Pumpkins discovered (API): {api_pumpkins}")
+            print(f"   Pumpkins not yet discovered: {undiscovered_pumpkins}")
+            print(f"   API progress: {claimed_pumpkins}/{api_pumpkins} ({round((claimed_pumpkins/api_pumpkins*100), 1)}%)")
+        else:
+            print(f"   API unavailable - cannot show discovery status")
         print(f"   Pumpkins already claimed: {claimed_pumpkins}")
         print(f"   Pumpkins left to get: {pumpkins_left}")
         print(f"   Real progress: {claimed_pumpkins}/{total_pumpkins} ({round((claimed_pumpkins/total_pumpkins*100), 1)}%)")
-        print(f"   API progress: {claimed_pumpkins}/{api_pumpkins} ({round((claimed_pumpkins/api_pumpkins*100), 1) if api_pumpkins > 0 else 0}%)")
-        print(f"   New pumpkins found this hour: {len(recent_pumpkins)}")
+        print(f"   New pumpkins found this hour: {len(recent_pumpkins) if api_pumpkins > 0 else 'N/A (API unavailable)'}")
         
         # Save all fetched data for reference
         save_data_to_file(pumpkin_data, "all_pumpkins.json")
